@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IceCemil - Kartu Pelanggan</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #eaf5fb;
+      color: #493b39;
+    }
+
+    .card {
+      max-width: 430px;
+      margin: 25px auto;
+      padding: 24px;
+      background: white;
+      border-radius: 22px;
+      box-shadow: 0 4px 18px #00000010;
+    }
+
+    h1 {
+      color: #e78eae;
+      text-align: center;
+    }
+
+    h2 {
+      color: #75aeca;
+      text-align: center;
+    }
+
+    p { text-align: center; }
+
+    input, button {
+      width: 100%;
+      padding: 13px;
+      margin: 8px 0;
+      border-radius: 11px;
+      font-size: 16px;
+    }
+
+    input { border: 1px solid #ddd; }
+
+    button {
+      border: 0;
+      background: #efabc4;
+      color: white;
+      font-weight: bold;
+    }
+
+    .stamps {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin: 22px 0;
+    }
+
+    .stamp {
+      background: #eaf5fb;
+      border-radius: 50%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 25px;
+    }
+
+    .reward {
+      background: #fff0f5;
+      padding: 15px;
+      border-radius: 14px;
+      text-align: center;
+    }
+
+    #status {
+      font-size: 13px;
+      color: #9b6178;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>🍦 IceCemil</h1>
+    <p>Kartu Sahabat IceCemil 💗</p>
+
+    <section id="login">
+      <h2>Selamat Datang!</h2>
+      <p>Masuk untuk melihat kartu loyalitasmu.</p>
+
+      <input
+        type="tel"
+        id="phone"
+        placeholder="Nomor HP"
+      >
+
+      <input
+        type="password"
+        id="pin"
+        placeholder="PIN 6 digit"
+        maxlength="6"
+        inputmode="numeric"
+      >
+
+      <button onclick="loginCustomer()">
+        Masuk
+      </button>
+    </section>
+
+    <section id="customer" hidden>
+      <h2>Halo, Sahabat IceCemil! 🍓</h2>
+
+      <p id="customerName">Nama pelanggan</p>
+
+      <h3 style="text-align:center">
+        Stamp Kamu
+      </h3>
+
+      <div class="stamps" id="stamps"></div>
+
+      <div class="reward">
+        🎁 <strong id="rewardStatus">
+          Hadiah belum tersedia
+        </strong>
+        <p>Belanja 5 kali, pembelian berikutnya gratis 1 menu!</p>
+      </div>
+
+      <h3>Riwayat Pembelian</h3>
+      <div id="history">
+        Riwayat akan tampil setelah akun terhubung.
+      </div>
+
+      <button onclick="logoutCustomer()">
+        Keluar
+      </button>
+    </section>
+
+    <p id="status">
+      Login pelanggan akan diaktifkan setelah konfigurasi keamanan selesai.
+    </p>
+  </div>
+
+<script>
+  function loginCustomer() {
+    const phone = document.getElementById("phone").value.trim();
+    const pin = document.getElementById("pin").value.trim();
+
+    if (!phone || !pin) {
+      document.getElementById("status").textContent =
+        "Masukkan nomor HP dan PIN terlebih dahulu.";
+      return;
+    }
+
+    document.getElementById("status").textContent =
+      "Login pelanggan belum diaktifkan. Silakan tunggu konfigurasi berikutnya.";
+  }
+
+  function logoutCustomer() {
+    document.getElementById("customer").hidden = true;
+    document.getElementById("login").hidden = false;
+  }
+
+  const stamps = document.getElementById("stamps");
+
+  for (let i = 0; i < 5; i++) {
+    const stamp = document.createElement("div");
+    stamp.className = "stamp";
+    stamp.textContent = "🍦";
+    stamps.appendChild(stamp);
+  }
+</script>
+
+</body>
+</html>
