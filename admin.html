@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IceCemil - Admin</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #eaf5fb;
+      color: #493b39;
+    }
+    .card {
+      max-width: 480px;
+      margin: 35px auto;
+      padding: 24px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 18px #00000010;
+    }
+    h1 { color: #e78eae; text-align: center; }
+    h2 { color: #75aeca; }
+    input, button {
+      width: 100%;
+      padding: 13px;
+      margin: 8px 0;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    input { border: 1px solid #ddd; }
+    button {
+      border: 0;
+      background: #efabc4;
+      color: white;
+      font-weight: bold;
+    }
+    button:disabled { opacity: .5; }
+    .hidden { display: none; }
+    #status { white-space: pre-wrap; font-size: 14px; }
+  </style>
+</head>
+
+<body>
+  <section class="card">
+    <h1>🍦 IceCemil</h1>
+    <p style="text-align:center">Admin Dashboard</p>
+
+    <div id="login">
+      <h2>Login Pemilik</h2>
+      <input id="email" type="email" placeholder="Email admin">
+      <input id="password" type="password" placeholder="Password">
+      <button onclick="loginAdmin()">Masuk</button>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <h2>Halo, Pemilik IceCemil! 💗</h2>
+      <p>Login berhasil. Koneksi admin aktif.</p>
+      <p id="adminEmail"></p>
+      <button onclick="logoutAdmin()">Keluar</button>
+    </div>
+
+    <p id="status"></p>
+  </section>
+
+<script>
+  // GANTI DUA NILAI DI BAWAH DENGAN DATA SUPABASE MILIK LU
+  const SUPABASE_URL = "https://jalfjemcoowgsfzrxzim.supabase.co/rest/v1/";
+  const SUPABASE_KEY = "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+
+  const db = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  const statusBox = document.getElementById("status");
+
+  function showStatus(message) {
+    statusBox.textContent = message;
+  }
+
+  async function loginAdmin() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!email || !password) {
+      showStatus("Isi email dan password terlebih dahulu.");
+      return;
+    }
+
+    showStatus("Sedang memeriksa akun...");
+
+    const { data, error } = await db.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      showStatus("Login gagal: " + error.message);
+      return;
+    }
+
+    const { data: isAdmin, error: adminError } =
+      await db.rpc("is_admin");
+
+    if (adminError || isAdmin !== true) {
+      await db.auth.signOut();
+      showStatus("Akun ini tidak memiliki akses admin.");
+      return;
+    }
+
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
+    document.getElementById("adminEmail").textContent =
+      "Login sebagai: " + data.user.email;
+
+    showStatus("Berhasil masuk ke IceCemil!");
+  }
+
+  async function logoutAdmin() {
+    await db.auth.signOut();
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("login").classList.remove("hidden");
+    document.getElementById("password").value = "";
+    showStatus("Lu sudah logout.");
+  }
+
+  db.auth.getSession().then(async ({ data }) => {
+    if (data.session) {
+      const { data: isAdmin, error } = await db.rpc("is_admin");
+
+      if (!error && isAdmin === true) {
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
+        document.getElementById("adminEmail").textContent =
+          "Login sebagai: " + data.session.user.email;
+      } else {
+        await db.auth.signOut();
+      }
+    }
+  });
+</script>
+</body>
+</html>
