@@ -6,9 +6,11 @@
   <title>IceCemil - Admin</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       padding: 20px;
@@ -16,16 +18,23 @@
       background: #eaf5fb;
       color: #493b39;
     }
+
     .card {
       max-width: 480px;
-      margin: 35px auto;
+      margin: 25px auto;
       padding: 24px;
       background: white;
       border-radius: 20px;
       box-shadow: 0 4px 18px #00000010;
     }
-    h1 { color: #e78eae; text-align: center; }
+
+    h1 {
+      color: #e78eae;
+      text-align: center;
+    }
+
     h2 { color: #75aeca; }
+
     input, button {
       width: 100%;
       padding: 13px;
@@ -33,16 +42,54 @@
       border-radius: 10px;
       font-size: 16px;
     }
+
     input { border: 1px solid #ddd; }
+
     button {
       border: 0;
       background: #efabc4;
       color: white;
       font-weight: bold;
+      cursor: pointer;
     }
+
     button:disabled { opacity: .5; }
+
     .hidden { display: none; }
-    #status { white-space: pre-wrap; font-size: 14px; }
+
+    #status {
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #qrCard {
+      margin-top: 20px;
+      padding: 18px;
+      background: #fff7fa;
+      border-radius: 15px;
+      text-align: center;
+    }
+
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin: 18px 0;
+    }
+
+    #qrcode img {
+      margin: auto;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #776;
+      word-break: break-all;
+    }
+
+    .logout {
+      background: #75aeca;
+    }
   </style>
 </head>
 
@@ -53,25 +100,80 @@
 
     <div id="login">
       <h2>Login Pemilik</h2>
-      <input id="email" type="email" placeholder="Email admin">
-      <input id="password" type="password" placeholder="Password">
-      <button onclick="loginAdmin()">Masuk</button>
+
+      <input
+        id="email"
+        type="email"
+        placeholder="Email admin"
+      >
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Password"
+      >
+
+      <button id="loginButton" onclick="loginAdmin()">
+        Masuk
+      </button>
     </div>
 
     <div id="dashboard" class="hidden">
       <h2>Halo, Pemilik IceCemil! 💗</h2>
-      <p>Login berhasil. Koneksi admin aktif.</p>
+      <p>Login sebagai:</p>
       <p id="adminEmail"></p>
-      <button onclick="logoutAdmin()">Keluar</button>
+
+      <hr>
+
+      <h2>Tambah Pelanggan 🍦</h2>
+
+      <input
+        id="customerName"
+        type="text"
+        placeholder="Nama pelanggan"
+      >
+
+      <input
+        id="customerPhone"
+        type="tel"
+        placeholder="Nomor HP pelanggan"
+      >
+
+      <button id="addButton" onclick="addCustomer()">
+        Tambah Pelanggan
+      </button>
+
+      <div id="qrCard" class="hidden">
+        <h2>QR Pelanggan Berhasil Dibuat! 💗</h2>
+
+        <div id="qrcode"></div>
+
+        <p id="qrCustomerName"></p>
+
+        <p class="small">
+          QR ini merupakan identitas pelanggan.
+          Simpan atau berikan kepada pelanggan.
+        </p>
+
+        <button onclick="window.print()">
+          Cetak QR
+        </button>
+      </div>
+
+      <button class="logout" onclick="logoutAdmin()">
+        Keluar
+      </button>
     </div>
 
     <p id="status"></p>
   </section>
 
 <script>
-  // GANTI DUA NILAI DI BAWAH DENGAN DATA SUPABASE MILIK LU
-  const SUPABASE_URL = "https://jalfjemcoowgsfzrxzim.supabase.co/rest/v1/";
-  const SUPABASE_KEY = "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+  const SUPABASE_URL =
+    "https://jalfjemcoowgsfzrxzim.supabase.co";
+
+  const SUPABASE_KEY =
+    "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
 
   const db = window.supabase.createClient(
     SUPABASE_URL,
@@ -84,61 +186,160 @@
     statusBox.textContent = message;
   }
 
+  async function checkAdmin() {
+    const { data, error } = await db.rpc("is_admin");
+
+    return !error && data === true;
+  }
+
   async function loginAdmin() {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+    const email =
+      document.getElementById("email").value.trim();
+
+    const password =
+      document.getElementById("password").value;
 
     if (!email || !password) {
       showStatus("Isi email dan password terlebih dahulu.");
       return;
     }
 
+    const button = document.getElementById("loginButton");
+    button.disabled = true;
+
     showStatus("Sedang memeriksa akun...");
 
-    const { data, error } = await db.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } =
+      await db.auth.signInWithPassword({
+        email,
+        password
+      });
 
     if (error) {
       showStatus("Login gagal: " + error.message);
+      button.disabled = false;
       return;
     }
 
-    const { data: isAdmin, error: adminError } =
-      await db.rpc("is_admin");
+    const isAdmin = await checkAdmin();
 
-    if (adminError || isAdmin !== true) {
+    if (!isAdmin) {
       await db.auth.signOut();
       showStatus("Akun ini tidak memiliki akses admin.");
+      button.disabled = false;
       return;
     }
 
-    document.getElementById("login").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
-    document.getElementById("adminEmail").textContent =
-      "Login sebagai: " + data.user.email;
-
+    showDashboard(data.user.email);
+    button.disabled = false;
     showStatus("Berhasil masuk ke IceCemil!");
+  }
+
+  function showDashboard(email) {
+    document.getElementById("login").classList.add("hidden");
+
+    document.getElementById("dashboard")
+      .classList.remove("hidden");
+
+    document.getElementById("adminEmail").textContent =
+      email;
+  }
+
+  async function addCustomer() {
+    const name =
+      document.getElementById("customerName").value.trim();
+
+    const phone =
+      document.getElementById("customerPhone").value.trim();
+
+    if (!name || !phone) {
+      showStatus("Nama dan nomor HP wajib diisi.");
+      return;
+    }
+
+    const button = document.getElementById("addButton");
+    button.disabled = true;
+
+    showStatus("Sedang menyimpan pelanggan...");
+
+    const isAdmin = await checkAdmin();
+
+    if (!isAdmin) {
+      showStatus("Sesi admin tidak valid. Silakan login kembali.");
+      button.disabled = false;
+      return;
+    }
+
+    const customerId = crypto.randomUUID();
+    const qrToken = crypto.randomUUID();
+
+    const { error } = await db
+      .from("customers")
+      .insert({
+        id: customerId,
+        name: name,
+        phone: phone,
+        qr_token: qrToken,
+        stamp_count: 0,
+        reward_available: false
+      });
+
+    if (error) {
+      showStatus(
+        "Gagal menyimpan pelanggan: " + error.message
+      );
+
+      button.disabled = false;
+      return;
+    }
+
+    document.getElementById("customerName").value = "";
+    document.getElementById("customerPhone").value = "";
+
+    document.getElementById("qrCard")
+      .classList.remove("hidden");
+
+    document.getElementById("qrCustomerName").textContent =
+      "Nama: " + name;
+
+    const qrBox = document.getElementById("qrcode");
+    qrBox.innerHTML = "";
+
+    new QRCode(qrBox, {
+      text: qrToken,
+      width: 200,
+      height: 200,
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    showStatus("Pelanggan berhasil ditambahkan! 💗");
+
+    button.disabled = false;
   }
 
   async function logoutAdmin() {
     await db.auth.signOut();
-    document.getElementById("dashboard").classList.add("hidden");
-    document.getElementById("login").classList.remove("hidden");
+
+    document.getElementById("dashboard")
+      .classList.add("hidden");
+
+    document.getElementById("login")
+      .classList.remove("hidden");
+
     document.getElementById("password").value = "";
+
+    document.getElementById("qrCard")
+      .classList.add("hidden");
+
     showStatus("Lu sudah logout.");
   }
 
   db.auth.getSession().then(async ({ data }) => {
     if (data.session) {
-      const { data: isAdmin, error } = await db.rpc("is_admin");
+      const isAdmin = await checkAdmin();
 
-      if (!error && isAdmin === true) {
-        document.getElementById("login").classList.add("hidden");
-        document.getElementById("dashboard").classList.remove("hidden");
-        document.getElementById("adminEmail").textContent =
-          "Login sebagai: " + data.session.user.email;
+      if (isAdmin) {
+        showDashboard(data.session.user.email);
       } else {
         await db.auth.signOut();
       }
