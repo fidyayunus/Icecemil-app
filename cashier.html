@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IceCemil - Kasir</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; padding:16px; font-family:Arial,sans-serif; background:#eaf5fb; color:#493b39; }
+    .card { max-width:520px; margin:18px auto; padding:22px; background:white; border-radius:20px; box-shadow:0 4px 18px #00000010; }
+    h1 { color:#e78eae; text-align:center; }
+    h2 { color:#75aeca; font-size:20px; }
+    input,select,button { width:100%; padding:13px; margin:7px 0; border-radius:10px; font-size:16px; }
+    input,select { border:1px solid #ddd; background:white; color:#493b39; }
+    button { border:0; background:#efabc4; color:white; font-weight:bold; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .blue { background:#75aeca; }
+    .soft { background:#f7dce7; color:#654b55; }
+    .hidden { display:none !important; }
+    #status { white-space:pre-wrap; font-size:14px; line-height:1.5; }
+    .panel { background:#f7fbfd; border-radius:14px; padding:14px; margin:14px 0; }
+    .small { color:#776; font-size:13px; line-height:1.5; }
+    #reader { width:100%; margin-top:10px; }
+    #qrOutput { display:flex; justify-content:center; margin:12px; }
+    .customer-name { font-size:18px; font-weight:bold; color:#d77f9f; }
+    .stamp { font-size:17px; font-weight:bold; color:#75aeca; }
+  </style>
+</head>
+<body>
+<section class="card">
+  <h1>🍦 IceCemil</h1>
+  <p style="text-align:center">Halaman Kasir</p>
+
+  <div id="login">
+    <h2>Login Kasir</h2>
+    <input id="email" type="email" placeholder="Email kasir" autocomplete="username">
+    <input id="password" type="password" placeholder="Password kasir" autocomplete="current-password">
+    <button id="loginButton" onclick="loginCashier()">Masuk</button>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <h2>Halo, Kasir IceCemil! 💗</h2>
+    <p class="small">Login sebagai: <span id="cashierEmail"></span></p>
+
+    <div class="panel">
+      <h2>🔎 Cari / Scan QR Pelanggan</h2>
+      <button class="blue" onclick="startScanner()">Scan QR Pelanggan</button>
+      <div id="reader" class="hidden"></div>
+      <p class="small">Arahkan kamera ke QR pelanggan. Jika kamera tidak tersedia, masukkan token QR secara manual.</p>
+      <input id="manualToken" type="text" placeholder="Tempel token QR pelanggan">
+      <button class="soft" onclick="findCustomerByToken()">Cari dengan Token</button>
+    </div>
+
+    <div id="customerPanel" class="panel hidden">
+      <p class="customer-name" id="selectedCustomerName"></p>
+      <p id="selectedCustomerPhone" class="small"></p>
+      <p class="stamp" id="selectedCustomerStamp"></p>
+      <p id="rewardNotice" class="small"></p>
+      <button class="soft" onclick="clearSelectedCustomer()">Ganti Pelanggan</button>
+    </div>
+
+    <div class="panel">
+      <h2>➕ Daftarkan Pelanggan Baru</h2>
+      <input id="newCustomerName" type="text" placeholder="Nama pelanggan">
+      <input id="newCustomerPhone" type="tel" placeholder="Nomor HP pelanggan">
+      <button id="addCustomerButton" onclick="addCustomer()">Tambah Pelanggan</button>
+      <div id="newQrCard" class="hidden">
+        <p class="customer-name">QR pelanggan berhasil dibuat!</p>
+        <div id="qrOutput"></div>
+        <p id="newQrName" class="small"></p>
+        <button class="blue" onclick="window.print()">Cetak QR</button>
+      </div>
+    </div>
+
+    <div id="transactionPanel" class="panel hidden">
+      <h2>🧁 Catat Transaksi</h2>
+      <p class="small">Setiap pembelian berbayar mendapat 1 stamp. Setelah 5 stamp, transaksi berikutnya menjadi hadiah gratis.</p>
+      <label for="menuSelect" class="small">Menu</label>
+      <select id="menuSelect"><option value="">Memuat menu...</option></select>
+      <label for="quantity" class="small">Jumlah produk untuk pembelian berbayar</label>
+      <input id="quantity" type="number" min="1" step="1" value="1">
+      <button id="transactionButton" onclick="recordTransaction()">Simpan Transaksi</button>
+      <p id="transactionResult" class="small"></p>
+    </div>
+
+    <button class="blue" onclick="logoutCashier()">Keluar</button>
+  </div>
+  <p id="status"></p>
+</section>
+
+<script>
+const SUPABASE_URL = "https://jalfjemcoowgsfzrxzim.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const statusBox = document.getElementById("status");
+let selectedCustomer = null;
+let scanner = null;
+
+function showStatus(message) {
+  statusBox.textContent = message;
+}
+
+async function checkCashier() {
+  const { data, error } = await db.rpc("is_cashier");
+  return !error && data === true;
+}
+
+async function loginCashier() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || !password) return showStatus("Isi email dan password terlebih dahulu.");
+
+  const button = document.getElementById("loginButton");
+  button.disabled = true;
+  showStatus("Sedang memeriksa akun...");
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
+  if (error) {
+    showStatus("Login gagal: " + error.message);
+    button.disabled = false;
+    return;
+  }
+
+  if (!(await checkCashier())) {
+    await db.auth.signOut();
+    showStatus("Akun ini tidak terdaftar sebagai kasir.");
+    button.disabled = false;
+    return;
+  }
+
+  await showDashboard(data.user.email);
+  button.disabled = false;
+  showStatus("Berhasil masuk ke IceCemil!");
+}
+
+async function showDashboard(email) {
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  document.getElementById("cashierEmail").textContent = email;
+  await loadMenus();
+}
+
+async function loadMenus() {
+  const select = document.getElementById("menuSelect");
+  const { data, error } = await db.from("menus")
+    .select("id,name,price")
+    .eq("active", true)
+    .order("id");
+
+  if (error) {
+    select.innerHTML = '<option value="">Menu gagal dimuat</option>';
+    showStatus("Gagal memuat menu: " + error.message);
+    return;
+  }
+
+  select.innerHTML = '<option value="">Pilih menu</option>';
+  (data || []).forEach(menu => {
+    const option = document.createElement("option");
+    option.value = menu.id;
+    option.textContent = menu.name;
+    select.appendChild(option);
+  });
+}
+
+async function findCustomerByToken() {
+  const token = document.getElementById("manualToken").value.trim();
+  if (!token) return showStatus("Masukkan token QR pelanggan.");
+  await loadCustomerByToken(token);
+}
+
+async function loadCustomerByToken(token) {
+  if (!(await checkCashier())) {
+    showStatus("Sesi kasir tidak valid. Silakan login kembali.");
+    return;
+  }
+
+  showStatus("Mencari pelanggan...");
+  const { data, error } = await db.from("customers")
+    .select("id,name,phone,qr_token,stamp_count,reward_available")
+    .eq("qr_token", token)
+    .maybeSingle();
+
+  if (error || !data) {
+    showStatus(error ? "Gagal mencari pelanggan: " + error.message : "Pelanggan tidak ditemukan. Periksa QR-nya.");
+    return;
+  }
+
+  selectCustomer(data);
+  document.getElementById("manualToken").value = "";
+  showStatus("Pelanggan ditemukan.");
+}
+
+function selectCustomer(customer) {
+  selectedCustomer = customer;
+  document.getElementById("customerPanel").classList.remove("hidden");
+  document.getElementById("transactionPanel").classList.remove("hidden");
+  document.getElementById("selectedCustomerName").textContent = customer.name;
+  document.getElementById("selectedCustomerPhone").textContent = customer.phone || "";
+  updateCustomerStamp(customer.stamp_count, customer.reward_available);
+}
+
+function updateCustomerStamp(stampCount, rewardAvailable) {
+  document.getElementById("selectedCustomerStamp").textContent = "🍦 Stamp aktif: " + stampCount + " / 5";
+  document.getElementById("rewardNotice").textContent =
+    rewardAvailable || stampCount >= 5
+      ? "🎁 Pelanggan wajib menukarkan 1 menu gratis pada transaksi berikutnya."
+      : "Sisa " + (5 - stampCount) + " pembelian menuju hadiah gratis.";
+}
+
+function clearSelectedCustomer() {
+  selectedCustomer = null;
+  document.getElementById("customerPanel").classList.add("hidden");
+  document.getElementById("transactionPanel").classList.add("hidden");
+  document.getElementById("transactionResult").textContent = "";
+}
+
+async function startScanner() {
+  if (!window.Html5Qrcode) {
+    showStatus("Pemindai gagal dimuat. Gunakan input token manual.");
+    return;
+  }
+
+  const reader = document.getElementById("reader");
+  reader.classList.remove("hidden");
+
+  if (scanner) {
+    try { await scanner.stop(); } catch (_) {}
+    scanner = null;
+  }
+
+  scanner = new Html5Qrcode("reader");
+  try {
+    await scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 230, height: 230 } },
+      async decodedText => {
+        try { await scanner.stop(); } catch (_) {}
+        reader.classList.add("hidden");
+        scanner = null;
+        await loadCustomerByToken(decodedText);
+      },
+      () => {}
+    );
+    showStatus("Kamera aktif. Arahkan ke QR pelanggan.");
+  } catch (_) {
+    reader.classList.add("hidden");
+    scanner = null;
+    showStatus("Kamera tidak dapat dibuka. Pastikan izin kamera aktif dan halaman menggunakan HTTPS. Kamu juga bisa memasukkan token QR secara manual.");
+  }
+}
+
+async function addCustomer() {
+  const name = document.getElementById("newCustomerName").value.trim();
+  const phone = document.getElementById("newCustomerPhone").value.trim();
+  if (!name || !phone) return showStatus("Nama dan nomor HP wajib diisi.");
+
+  const button = document.getElementById("addCustomerButton");
+  button.disabled = true;
+  showStatus("Menyimpan pelanggan...");
+
+  if (!(await checkCashier())) {
+    showStatus("Sesi kasir tidak valid. Silakan login kembali.");
+    button.disabled = false;
+    return;
+  }
+
+  const customerId = crypto.randomUUID();
+  const qrToken = crypto.randomUUID();
+
+  const { error } = await db.from("customers").insert({
+    id: customerId,
+    name,
+    phone,
+    qr_token: qrToken,
+    stamp_count: 0,
+    reward_available: false
+  });
+
+  if (error) {
+    showStatus("Gagal menyimpan pelanggan: " + error.message);
+    button.disabled = false;
+    return;
+  }
+
+  document.getElementById("newCustomerName").value = "";
+  document.getElementById("newCustomerPhone").value = "";
+  document.getElementById("newQrCard").classList.remove("hidden");
+  document.getElementById("newQrName").textContent = "Nama: " + name;
+
+  const qrBox = document.getElementById("qrOutput");
+  qrBox.innerHTML = "";
+  new QRCode(qrBox, {
+    text: qrToken,
+    width: 200,
+    height: 200,
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  showStatus("Pelanggan berhasil ditambahkan! 💗");
+  button.disabled = false;
+}
+
+async function recordTransaction() {
+  if (!selectedCustomer) return showStatus("Pilih pelanggan terlebih dahulu.");
+
+  const menuId = document.getElementById("menuSelect").value;
+  const quantity = Number(document.getElementById("quantity").value);
+
+  if (!menuId) return showStatus("Pilih menu terlebih dahulu.");
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return showStatus("Jumlah produk harus bilangan bulat minimal 1.");
+  }
+
+  if (!(await checkCashier())) {
+    showStatus("Sesi kasir tidak valid. Silakan login kembali.");
+    return;
+  }
+
+  const button = document.getElementById("transactionButton");
+  button.disabled = true;
+  document.getElementById("transactionResult").textContent = "";
+  showStatus("Memproses transaksi...");
+
+  const { data, error } = await db.rpc("record_icecemil_transaction", {
+    p_customer_id: selectedCustomer.id,
+    p_menu_id: Number(menuId),
+    p_quantity: quantity
+  });
+
+  if (error) {
+    showStatus("Transaksi gagal: " + error.message);
+    button.disabled = false;
+    return;
+  }
+
+  const isReward = data.transaction_type === "reward";
+  document.getElementById("transactionResult").textContent = isReward
+    ? "🎁 Hadiah gratis berhasil dicatat. Total Rp0. Stamp kembali menjadi 0."
+    : "Pembelian berhasil dicatat. Total: Rp" + Number(data.total).toLocaleString("id-ID") +
+      ". Stamp sekarang: " + data.stamp_count + " / 5.";
+
+  const { data: refreshed, error: refreshError } = await db.from("customers")
+    .select("id,name,phone,qr_token,stamp_count,reward_available")
+    .eq("id", selectedCustomer.id)
+    .single();
+
+  if (!refreshError && refreshed) selectCustomer(refreshed);
+
+  document.getElementById("quantity").value = "1";
+  showStatus("Transaksi berhasil disimpan! 💗");
+  button.disabled = false;
+}
+
+async function logoutCashier() {
+  if (scanner) {
+    try { await scanner.stop(); } catch (_) {}
+    scanner = null;
+  }
+
+  await db.auth.signOut();
+  selectedCustomer = null;
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("password").value = "";
+  clearSelectedCustomer();
+  showStatus("Kamu sudah logout.");
+}
+
+db.auth.getSession().then(async ({ data }) => {
+  if (data.session) {
+    if (await checkCashier()) {
+      await showDashboard(data.session.user.email);
+    } else {
+      await db.auth.signOut();
+      showStatus("Akun ini tidak terdaftar sebagai kasir.");
+    }
+  }
+});
+</script>
+</body>
+</html>
