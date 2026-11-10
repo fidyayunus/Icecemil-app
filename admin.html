@@ -1,350 +1,470 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IceCemil - Admin</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-  <style>
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      background: #eaf5fb;
-      color: #493b39;
-    }
-
-    .card {
-      max-width: 480px;
-      margin: 25px auto;
-      padding: 24px;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 4px 18px #00000010;
-    }
-
-    h1 {
-      color: #e78eae;
-      text-align: center;
-    }
-
-    h2 { color: #75aeca; }
-
-    input, button {
-      width: 100%;
-      padding: 13px;
-      margin: 8px 0;
-      border-radius: 10px;
-      font-size: 16px;
-    }
-
-    input { border: 1px solid #ddd; }
-
-    button {
-      border: 0;
-      background: #efabc4;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:disabled { opacity: .5; }
-
-    .hidden { display: none; }
-
-    #status {
-      white-space: pre-wrap;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    #qrCard {
-      margin-top: 20px;
-      padding: 18px;
-      background: #fff7fa;
-      border-radius: 15px;
-      text-align: center;
-    }
-
-    #qrcode {
-      display: flex;
-      justify-content: center;
-      margin: 18px 0;
-    }
-
-    #qrcode img {
-      margin: auto;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #776;
-      word-break: break-all;
-    }
-
-    .logout {
-      background: #75aeca;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IceCemil Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font-family:Arial;background:#eaf5fb;color:#493b39}
+.card{max-width:1000px;margin:18px auto;padding:20px;background:white;border-radius:18px;box-shadow:0 4px 18px #00000010}
+h1{text-align:center;color:#e78eae}
+h2{color:#75aeca}
+input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:10px;font-size:15px}
+input,select{border:1px solid #ddd}
+button{border:0;background:#efabc4;color:white;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.5}
+.blue{background:#75aeca}
+.soft{background:#f7dce7;color:#654b55}
+.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat{background:#f7fbfd;padding:16px;border-radius:14px}
+.stat strong{display:block;color:#d77f9f;font-size:23px;margin-top:8px}
+.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:7px;margin:18px 0}
+.tabs button{margin:0}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:600px;font-size:13px}
+th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+th{background:#f7dce7}
+.small{font-size:13px;color:#776}
+#status{white-space:pre-wrap;font-size:14px;line-height:1.5}
+#qrcode{display:flex;justify-content:center;margin:16px}
+.panel{background:#f7fbfd;padding:14px;border-radius:12px;margin:10px 0}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+</style>
 </head>
-
 <body>
-  <section class="card">
-    <h1>🍦 IceCemil</h1>
-    <p style="text-align:center">Admin Dashboard</p>
 
-    <div id="login">
-      <h2>Login Pemilik</h2>
+<section class="card">
+<h1>🍦 IceCemil</h1>
+<p style="text-align:center">Admin Dashboard</p>
 
-      <input
-        id="email"
-        type="email"
-        placeholder="Email admin"
-      >
+<div id="login">
+<h2>Login Pemilik</h2>
+<input id="email" type="email" placeholder="Email admin">
+<input id="password" type="password" placeholder="Password admin">
+<button id="loginButton" onclick="loginAdmin()">Masuk</button>
+</div>
 
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-      >
+<div id="dashboard" class="hidden">
+<p>Halo, Pemilik IceCemil! 💗</p>
+<p class="small" id="adminEmail"></p>
 
-      <button id="loginButton" onclick="loginAdmin()">
-        Masuk
-      </button>
-    </div>
+<div class="tabs">
+<button onclick="showTab('overview')">Ringkasan</button>
+<button onclick="showTab('customers')">Pelanggan</button>
+<button onclick="showTab('transactions')">Riwayat</button>
+<button onclick="showTab('reports')">Laporan</button>
+<button onclick="showTab('add')">Tambah Pelanggan</button>
+</div>
 
-    <div id="dashboard" class="hidden">
-      <h2>Halo, Pemilik IceCemil! 💗</h2>
-      <p>Login sebagai:</p>
-      <p id="adminEmail"></p>
+<!-- RINGKASAN -->
+<div id="tab-overview">
+<h2>Ringkasan Bisnis</h2>
+<div class="grid">
+<div class="stat">Omzet Hari Ini<strong id="todayRevenue">Rp0</strong></div>
+<div class="stat">Transaksi Hari Ini<strong id="todayCount">0</strong></div>
+<div class="stat">Omzet Bulan Ini<strong id="monthRevenue">Rp0</strong></div>
+<div class="stat">Total Pelanggan<strong id="customerCount">0</strong></div>
+</div>
 
-      <hr>
+<h2>Menu Terlaris</h2>
+<div id="bestMenu" class="panel">Memuat...</div>
 
-      <h2>Tambah Pelanggan 🍦</h2>
+<h2>Pelanggan Paling Aktif</h2>
+<div id="topCustomers" class="panel">Memuat...</div>
+</div>
 
-      <input
-        id="customerName"
-        type="text"
-        placeholder="Nama pelanggan"
-      >
+<!-- PELANGGAN -->
+<div id="tab-customers" class="hidden">
+<h2>Data Pelanggan</h2>
+<input id="customerSearch" placeholder="Cari nama atau nomor HP..." oninput="renderCustomers()">
+<div class="tablewrap">
+<table>
+<thead><tr><th>Nama</th><th>Nomor HP</th><th>Stamp</th><th>Hadiah</th><th>Terdaftar</th></tr></thead>
+<tbody id="customersBody"></tbody>
+</table>
+</div>
+</div>
 
-      <input
-        id="customerPhone"
-        type="tel"
-        placeholder="Nomor HP pelanggan"
-      >
+<!-- RIWAYAT -->
+<div id="tab-transactions" class="hidden">
+<h2>Riwayat Transaksi</h2>
+<div class="filters">
+<input type="date" id="txFrom">
+<input type="date" id="txTo">
+<select id="txType">
+<option value="">Semua Transaksi</option>
+<option value="purchase">Pembelian</option>
+<option value="reward">Hadiah Gratis</option>
+</select>
+<button class="blue" onclick="renderTransactions()">Filter</button>
+</div>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Tanggal</th><th>Pelanggan</th><th>Menu</th><th>Jenis</th><th>Qty</th><th>Total</th></tr></thead>
+<tbody id="transactionsBody"></tbody>
+</table>
+</div>
+</div>
 
-      <button id="addButton" onclick="addCustomer()">
-        Tambah Pelanggan
-      </button>
+<!-- LAPORAN -->
+<div id="tab-reports" class="hidden">
+<h2>Laporan Penjualan</h2>
+<div class="filters">
+<label class="small">Dari tanggal<input type="date" id="reportFrom"></label>
+<label class="small">Sampai tanggal<input type="date" id="reportTo"></label>
+<button class="blue" onclick="renderReport()">Buat Laporan</button>
+<button class="soft" onclick="downloadCSV()">Ekspor CSV</button>
+</div>
+<div class="grid">
+<div class="stat">Omzet<strong id="reportRevenue">Rp0</strong></div>
+<div class="stat">Pembelian<strong id="reportPurchases">0</strong></div>
+<div class="stat">Hadiah Gratis<strong id="reportRewards">0</strong></div>
+</div>
+<h2>Penjualan per Menu</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Menu</th><th>Jumlah Item</th><th>Transaksi</th><th>Omzet</th></tr></thead>
+<tbody id="menuReportBody"></tbody>
+</table>
+</div>
+<p class="small">Omzet hanya menghitung transaksi pembelian. Hadiah gratis tetap tercatat dengan total Rp0.</p>
+</div>
 
-      <div id="qrCard" class="hidden">
-        <h2>QR Pelanggan Berhasil Dibuat! 💗</h2>
+<!-- TAMBAH PELANGGAN -->
+<div id="tab-add" class="hidden">
+<h2>Tambah Pelanggan 🍦</h2>
+<input id="customerName" placeholder="Nama pelanggan">
+<input id="customerPhone" type="tel" placeholder="Nomor HP pelanggan">
+<button id="addButton" onclick="addCustomer()">Tambah Pelanggan</button>
 
-        <div id="qrcode"></div>
+<div id="qrCard" class="hidden panel" style="text-align:center">
+<h2>QR Pelanggan Berhasil Dibuat!</h2>
+<div id="qrcode"></div>
+<p id="qrCustomerName"></p>
+<p class="small">Simpan atau berikan QR ini kepada pelanggan.</p>
+<button class="blue" onclick="window.print()">Cetak QR</button>
+</div>
+</div>
 
-        <p id="qrCustomerName"></p>
-
-        <p class="small">
-          QR ini merupakan identitas pelanggan.
-          Simpan atau berikan kepada pelanggan.
-        </p>
-
-        <button onclick="window.print()">
-          Cetak QR
-        </button>
-      </div>
-
-      <button class="logout" onclick="logoutAdmin()">
-        Keluar
-      </button>
-    </div>
-
-    <p id="status"></p>
-  </section>
+<button class="blue" onclick="refreshAll()">Muat Ulang Data</button>
+<button onclick="logoutAdmin()">Keluar</button>
+</div>
+<p id="status"></p>
+</section>
 
 <script>
-  const SUPABASE_URL =
-    "https://jalfjemcoowgsfzrxzim.supabase.co";
+const SUPABASE_URL="https://jalfjemcoowgsfzrxzim.supabase.co";
+const SUPABASE_KEY="sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-  const SUPABASE_KEY =
-    "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+let customers=[],menus=[],transactions=[],filteredReport=[];
+const statusBox=document.getElementById("status");
 
-  const db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+function showStatus(m){statusBox.textContent=m}
+function money(v){return "Rp"+Number(v||0).toLocaleString("id-ID")}
+function localDate(d=new Date()){
+ return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+function dateText(v){return v?new Date(v).toLocaleString("id-ID"):"-"}
+function safe(v){
+ return String(v??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ })[c]);
+}
 
-  const statusBox = document.getElementById("status");
+async function checkAdmin(){
+ const {data,error}=await db.rpc("is_admin");
+ return !error&&data===true;
+}
 
-  function showStatus(message) {
-    statusBox.textContent = message;
-  }
+async function loginAdmin(){
+ const email=document.getElementById("email").value.trim();
+ const password=document.getElementById("password").value;
+ if(!email||!password)return showStatus("Isi email dan password terlebih dahulu.");
 
-  async function checkAdmin() {
-    const { data, error } = await db.rpc("is_admin");
+ const btn=document.getElementById("loginButton");
+ btn.disabled=true;
+ showStatus("Memeriksa akun...");
 
-    return !error && data === true;
-  }
+ const {data,error}=await db.auth.signInWithPassword({email,password});
+ if(error){
+  showStatus("Login gagal: "+error.message);
+  btn.disabled=false;
+  return;
+ }
 
-  async function loginAdmin() {
-    const email =
-      document.getElementById("email").value.trim();
+ if(!(await checkAdmin())){
+  await db.auth.signOut();
+  showStatus("Akun ini tidak memiliki akses admin.");
+  btn.disabled=false;
+  return;
+ }
 
-    const password =
-      document.getElementById("password").value;
+ await showDashboard(data.user.email);
+ btn.disabled=false;
+ showStatus("Berhasil masuk ke IceCemil!");
+}
 
-    if (!email || !password) {
-      showStatus("Isi email dan password terlebih dahulu.");
-      return;
-    }
+async function showDashboard(email){
+ document.getElementById("login").classList.add("hidden");
+ document.getElementById("dashboard").classList.remove("hidden");
+ document.getElementById("adminEmail").textContent="Login sebagai: "+email;
+ await refreshAll();
+}
 
-    const button = document.getElementById("loginButton");
-    button.disabled = true;
+function showTab(name){
+ ["overview","customers","transactions","reports","add"].forEach(n=>{
+  document.getElementById("tab-"+n).classList.toggle("hidden",n!==name);
+ });
+ if(name==="customers")renderCustomers();
+ if(name==="transactions")renderTransactions();
+ if(name==="reports")renderReport();
+}
 
-    showStatus("Sedang memeriksa akun...");
+async function refreshAll(){
+ if(!(await checkAdmin())){
+  showStatus("Sesi admin tidak valid. Silakan login kembali.");
+  return;
+ }
 
-    const { data, error } =
-      await db.auth.signInWithPassword({
-        email,
-        password
-      });
+ showStatus("Memuat data...");
 
-    if (error) {
-      showStatus("Login gagal: " + error.message);
-      button.disabled = false;
-      return;
-    }
+ const [c,m,t]=await Promise.all([
+  db.from("customers").select("id,name,phone,stamp_count,reward_available,created_at").order("created_at",{ascending:false}),
+  db.from("menus").select("id,name,price,active").order("id"),
+  db.from("transactions").select("id,customer_id,menu_id,transaction_type,quantity,unit_price,total,created_by,created_at").order("created_at",{ascending:false}).limit(5000)
+ ]);
 
-    const isAdmin = await checkAdmin();
+ if(c.error||m.error||t.error){
+  showStatus("Gagal memuat data: "+(c.error?.message||m.error?.message||t.error?.message));
+  return;
+ }
 
-    if (!isAdmin) {
-      await db.auth.signOut();
-      showStatus("Akun ini tidak memiliki akses admin.");
-      button.disabled = false;
-      return;
-    }
+ customers=c.data||[];
+ menus=m.data||[];
+ transactions=t.data||[];
 
-    showDashboard(data.user.email);
-    button.disabled = false;
-    showStatus("Berhasil masuk ke IceCemil!");
-  }
+ renderOverview();
+ renderCustomers();
+ renderTransactions();
+ renderReport();
+ showStatus("Data berhasil diperbarui.");
+}
 
-  function showDashboard(email) {
-    document.getElementById("login").classList.add("hidden");
+function menuName(id){
+ return menus.find(m=>String(m.id)===String(id))?.name||"Menu tidak ditemukan";
+}
+function customerName(id){
+ return customers.find(c=>c.id===id)?.name||"Pelanggan tidak ditemukan";
+}
 
-    document.getElementById("dashboard")
-      .classList.remove("hidden");
+function renderOverview(){
+ const today=localDate();
+ const month=today.slice(0,7);
 
-    document.getElementById("adminEmail").textContent =
-      email;
-  }
+ const daily=transactions.filter(t=>t.created_at?.slice(0,10)===today&&t.transaction_type==="purchase");
+ const monthly=transactions.filter(t=>t.created_at?.slice(0,7)===month&&t.transaction_type==="purchase");
 
-  async function addCustomer() {
-    const name =
-      document.getElementById("customerName").value.trim();
+ document.getElementById("todayRevenue").textContent=money(daily.reduce((s,t)=>s+Number(t.total||0),0));
+ document.getElementById("todayCount").textContent=daily.length;
+ document.getElementById("monthRevenue").textContent=money(monthly.reduce((s,t)=>s+Number(t.total||0),0));
+ document.getElementById("customerCount").textContent=customers.length;
 
-    const phone =
-      document.getElementById("customerPhone").value.trim();
+ const sales={};
+ transactions.filter(t=>t.transaction_type==="purchase").forEach(t=>{
+  sales[t.menu_id]=(sales[t.menu_id]||0)+Number(t.quantity||0);
+ });
+ const best=Object.entries(sales).sort((a,b)=>b[1]-a[1])[0];
 
-    if (!name || !phone) {
-      showStatus("Nama dan nomor HP wajib diisi.");
-      return;
-    }
+ document.getElementById("bestMenu").textContent=
+  best?menuName(best[0])+" — "+best[1]+" item terjual":"Belum ada penjualan.";
 
-    const button = document.getElementById("addButton");
-    button.disabled = true;
+ const freq={};
+ transactions.forEach(t=>freq[t.customer_id]=(freq[t.customer_id]||0)+1);
+ const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
-    showStatus("Sedang menyimpan pelanggan...");
+ document.getElementById("topCustomers").innerHTML=top.length?
+  top.map(([id,n])=>`<p>${safe(customerName(id))}: <b>${n} transaksi</b></p>`).join(""):
+  "Belum ada transaksi.";
+}
 
-    const isAdmin = await checkAdmin();
+function renderCustomers(){
+ const q=(document.getElementById("customerSearch").value||"").toLowerCase();
+ const rows=customers.filter(c=>
+  (c.name||"").toLowerCase().includes(q)||(c.phone||"").toLowerCase().includes(q)
+ );
 
-    if (!isAdmin) {
-      showStatus("Sesi admin tidak valid. Silakan login kembali.");
-      button.disabled = false;
-      return;
-    }
+ document.getElementById("customersBody").innerHTML=rows.map(c=>`
+ <tr>
+ <td>${safe(c.name)}</td>
+ <td>${safe(c.phone)}</td>
+ <td>${Number(c.stamp_count||0)}/5</td>
+ <td>${c.reward_available?"Tersedia":"Belum"}</td>
+ <td>${dateText(c.created_at)}</td>
+ </tr>`).join("")||'<tr><td colspan="5">Belum ada pelanggan.</td></tr>';
+}
 
-    const customerId = crypto.randomUUID();
-    const qrToken = crypto.randomUUID();
+function getFilteredTransactions(){
+ const from=document.getElementById("txFrom").value;
+ const to=document.getElementById("txTo").value;
+ const type=document.getElementById("txType").value;
 
-    const { error } = await db
-      .from("customers")
-      .insert({
-        id: customerId,
-        name: name,
-        phone: phone,
-        qr_token: qrToken,
-        stamp_count: 0,
-        reward_available: false
-      });
+ return transactions.filter(t=>
+  (!from||t.created_at.slice(0,10)>=from)&&
+  (!to||t.created_at.slice(0,10)<=to)&&
+  (!type||t.transaction_type===type)
+ );
+}
 
-    if (error) {
-      showStatus(
-        "Gagal menyimpan pelanggan: " + error.message
-      );
+function renderTransactions(){
+ const rows=getFilteredTransactions();
+ document.getElementById("transactionsBody").innerHTML=rows.map(t=>`
+ <tr>
+ <td>${dateText(t.created_at)}</td>
+ <td>${safe(customerName(t.customer_id))}</td>
+ <td>${safe(menuName(t.menu_id))}</td>
+ <td>${t.transaction_type==="reward"?"Hadiah gratis":"Pembelian"}</td>
+ <td>${t.quantity}</td>
+ <td>${money(t.total)}</td>
+ </tr>`).join("")||'<tr><td colspan="6">Belum ada transaksi.</td></tr>';
+}
 
-      button.disabled = false;
-      return;
-    }
+function renderReport(){
+ const from=document.getElementById("reportFrom").value;
+ const to=document.getElementById("reportTo").value;
 
-    document.getElementById("customerName").value = "";
-    document.getElementById("customerPhone").value = "";
+ filteredReport=transactions.filter(t=>
+  (!from||t.created_at.slice(0,10)>=from)&&
+  (!to||t.created_at.slice(0,10)<=to)
+ );
 
-    document.getElementById("qrCard")
-      .classList.remove("hidden");
+ const paid=filteredReport.filter(t=>t.transaction_type==="purchase");
+ const rewards=filteredReport.filter(t=>t.transaction_type==="reward");
 
-    document.getElementById("qrCustomerName").textContent =
-      "Nama: " + name;
+ document.getElementById("reportRevenue").textContent=
+  money(paid.reduce((s,t)=>s+Number(t.total||0),0));
+ document.getElementById("reportPurchases").textContent=paid.length;
+ document.getElementById("reportRewards").textContent=rewards.length;
 
-    const qrBox = document.getElementById("qrcode");
-    qrBox.innerHTML = "";
+ const stats={};
+ paid.forEach(t=>{
+  if(!stats[t.menu_id])stats[t.menu_id]={qty:0,count:0,revenue:0};
+  stats[t.menu_id].qty+=Number(t.quantity||0);
+  stats[t.menu_id].count++;
+  stats[t.menu_id].revenue+=Number(t.total||0);
+ });
 
-    new QRCode(qrBox, {
-      text: qrToken,
-      width: 200,
-      height: 200,
-      correctLevel: QRCode.CorrectLevel.H
-    });
+ document.getElementById("menuReportBody").innerHTML=
+  Object.entries(stats).map(([id,s])=>`
+  <tr>
+  <td>${safe(menuName(id))}</td>
+  <td>${s.qty}</td>
+  <td>${s.count}</td>
+  <td>${money(s.revenue)}</td>
+  </tr>`).join("")||
+  '<tr><td colspan="4">Belum ada penjualan pada periode ini.</td></tr>';
+}
 
-    showStatus("Pelanggan berhasil ditambahkan! 💗");
+function downloadCSV(){
+ if(!filteredReport.length){
+  showStatus("Tidak ada data untuk diekspor.");
+  return;
+ }
 
-    button.disabled = false;
-  }
+ const rows=[["Tanggal","Pelanggan","Nomor HP","Menu","Jenis","Qty","Harga Satuan","Total","Dibuat Oleh"]];
 
-  async function logoutAdmin() {
-    await db.auth.signOut();
+ filteredReport.forEach(t=>{
+  const c=customers.find(x=>x.id===t.customer_id)||{};
+  rows.push([t.created_at,c.name||"",c.phone||"",menuName(t.menu_id),
+   t.transaction_type,t.quantity,t.unit_price,t.total,t.created_by||""]);
+ });
 
-    document.getElementById("dashboard")
-      .classList.add("hidden");
+ const csv=rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="laporan-icecemil-"+localDate()+".csv";
+ a.click();
+ URL.revokeObjectURL(url);
+}
 
-    document.getElementById("login")
-      .classList.remove("hidden");
+async function addCustomer(){
+ const name=document.getElementById("customerName").value.trim();
+ const phone=document.getElementById("customerPhone").value.trim();
 
-    document.getElementById("password").value = "";
+ if(!name||!phone)return showStatus("Nama dan nomor HP wajib diisi.");
 
-    document.getElementById("qrCard")
-      .classList.add("hidden");
+ const btn=document.getElementById("addButton");
+ btn.disabled=true;
+ showStatus("Menyimpan pelanggan...");
 
-    showStatus("Lu sudah logout.");
-  }
+ if(!(await checkAdmin())){
+  showStatus("Sesi admin tidak valid.");
+  btn.disabled=false;
+  return;
+ }
 
-  db.auth.getSession().then(async ({ data }) => {
-    if (data.session) {
-      const isAdmin = await checkAdmin();
+ const customerId=crypto.randomUUID();
+ const qrToken=crypto.randomUUID();
 
-      if (isAdmin) {
-        showDashboard(data.session.user.email);
-      } else {
-        await db.auth.signOut();
-      }
-    }
-  });
+ const {error}=await db.from("customers").insert({
+  id:customerId,
+  name,
+  phone,
+  qr_token:qrToken,
+  stamp_count:0,
+  reward_available:false
+ });
+
+ if(error){
+  showStatus("Gagal menyimpan pelanggan: "+error.message);
+  btn.disabled=false;
+  return;
+ }
+
+ document.getElementById("customerName").value="";
+ document.getElementById("customerPhone").value="";
+ document.getElementById("qrCard").classList.remove("hidden");
+ document.getElementById("qrCustomerName").textContent="Nama: "+name;
+
+ const box=document.getElementById("qrcode");
+ box.innerHTML="";
+ new QRCode(box,{
+  text:qrToken,
+  width:200,
+  height:200,
+  correctLevel:QRCode.CorrectLevel.H
+ });
+
+ showStatus("Pelanggan berhasil ditambahkan! 💗");
+ btn.disabled=false;
+ await refreshAll();
+}
+
+async function logoutAdmin(){
+ await db.auth.signOut();
+ document.getElementById("dashboard").classList.add("hidden");
+ document.getElementById("login").classList.remove("hidden");
+ document.getElementById("password").value="";
+ document.getElementById("qrCard").classList.add("hidden");
+ showStatus("Lu sudah logout.");
+}
+
+document.getElementById("reportFrom").value=
+ localDate(new Date(new Date().getFullYear(),new Date().getMonth(),1));
+document.getElementById("reportTo").value=localDate();
+
+db.auth.getSession().then(async({data})=>{
+ if(data.session){
+  if(await checkAdmin())await showDashboard(data.session.user.email);
+  else await db.auth.signOut();
+ }
+});
 </script>
 </body>
 </html>
