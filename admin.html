@@ -81,12 +81,38 @@ th{background:#f7dce7}
 <div id="tab-customers" class="hidden">
 <h2>Data Pelanggan</h2>
 <input id="customerSearch" placeholder="Cari nama atau nomor HP..." oninput="renderCustomers()">
+
 <div class="tablewrap">
 <table>
-<thead><tr><th>Nama</th><th>Nomor HP</th><th>Stamp</th><th>Hadiah</th><th>Terdaftar</th></tr></thead>
+<thead>
+<tr>
+<th>Nama</th>
+<th>Nomor HP</th>
+<th>Stamp</th>
+<th>Hadiah</th>
+<th>Terdaftar</th>
+<th>Aksi</th>
+</tr>
+</thead>
 <tbody id="customersBody"></tbody>
 </table>
 </div>
+
+<div id="pinTokenBox" class="panel hidden">
+  <h3>🔐 Token Pendaftaran PIN</h3>
+  <p id="pinTokenCustomer"></p>
+
+  <label class="small">ID Pelanggan</label>
+  <input id="pinCustomerId" readonly>
+
+  <label class="small">Token pendaftaran</label>
+  <input id="pinTokenValue" readonly>
+
+  <p class="small">Token berlaku selama 24 jam dan hanya dapat digunakan sekali. Rahasiakan token ini.</p>
+
+  <button class="blue" onclick="copyPinToken()">Salin Token</button>
+</div>
+
 </div>
 
 <!-- RIWAYAT -->
@@ -255,6 +281,59 @@ async function refreshAll(){
  showStatus("Data berhasil diperbarui.");
 }
 
+async function createPinToken(customerId) {
+  if (!(await checkAdmin())) {
+    return showStatus("Sesi admin tidak valid.");
+  }
+
+  const customer = customers.find(c => c.id === customerId);
+
+  if (!customer) {
+    return showStatus("Pelanggan tidak ditemukan.");
+  }
+
+  showStatus("Membuat token pendaftaran PIN...");
+
+  const { data, error } = await db.functions.invoke(
+    "customer-pin-setup",
+    { body: { customer_id: customerId } }
+  );
+
+  if (error || !data?.success || !data?.token) {
+    return showStatus(
+      "Gagal membuat token: " +
+      (data?.error || error?.message || "Terjadi kesalahan.")
+    );
+  }
+
+  document.getElementById("pinTokenBox").classList.remove("hidden");
+  document.getElementById("pinTokenCustomer").textContent =
+    "Pelanggan: " + customer.name;
+
+  document.getElementById("pinCustomerId").value = customerId;
+  document.getElementById("pinTokenValue").value = data.token;
+
+  showStatus("Token berhasil dibuat. Berlaku selama 24 jam.");
+}
+
+async function copyPinToken() {
+  const customerId = document.getElementById("pinCustomerId").value;
+  const token = document.getElementById("pinTokenValue").value;
+
+  const textToCopy =
+    "ID Pelanggan: " + customerId +
+    "\nToken Pendaftaran: " + token;
+
+  try {
+    await navigator.clipboard.writeText(textToCopy);
+    showStatus("Data pendaftaran berhasil disalin!");
+  } catch {
+    const input = document.getElementById("pinTokenValue");
+    input.select();
+    showStatus("Salin token secara manual. ID pelanggan juga diperlukan.");
+  }
+}
+
 function menuName(id){
  return menus.find(m=>String(m.id)===String(id))?.name||"Menu tidak ditemukan";
 }
@@ -292,10 +371,12 @@ function renderOverview(){
   "Belum ada transaksi.";
 }
 
-function renderCustomers(){
+ function renderCustomers(){
  const q=(document.getElementById("customerSearch").value||"").toLowerCase();
+
  const rows=customers.filter(c=>
-  (c.name||"").toLowerCase().includes(q)||(c.phone||"").toLowerCase().includes(q)
+  (c.name||"").toLowerCase().includes(q)||
+  (c.phone||"").toLowerCase().includes(q)
  );
 
  document.getElementById("customersBody").innerHTML=rows.map(c=>`
@@ -305,7 +386,13 @@ function renderCustomers(){
  <td>${Number(c.stamp_count||0)}/5</td>
  <td>${c.reward_available?"Tersedia":"Belum"}</td>
  <td>${dateText(c.created_at)}</td>
- </tr>`).join("")||'<tr><td colspan="5">Belum ada pelanggan.</td></tr>';
+ <td>
+  <button class="blue" onclick="createPinToken('${c.id}')">
+   Buat PIN
+  </button>
+ </td>
+ </tr>`).join("")||
+ '<tr><td colspan="6">Belum ada pelanggan.</td></tr>';
 }
 
 function getFilteredTransactions(){
