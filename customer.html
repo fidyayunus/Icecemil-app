@@ -162,7 +162,7 @@
       status.textContent = "Lengkapi ID pelanggan, token, dan kedua kolom PIN.";
       return;
     }
-    if (!/^\\d{6}$/.test(pin)) {
+    if (!/^\d{6}$/.test(pin)) {
       status.textContent = "PIN harus tepat 6 angka.";
       return;
     }
