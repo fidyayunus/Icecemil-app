@@ -21,5 +21,67 @@ small{display:block;margin-top:22px;color:#927f79;line-height:1.5}
 <a href="./cashier.html">🧾 Halaman Kasir</a>
 <a href="./customer.html">🍨 Kartu Pelanggan</a>
 </nav>
-<small>Portal resmi IceCemil. Akses sesuai peran masing-masing.</small>
+<section id="resetPanel" hidden style="margin-top:22px;text-align:left;background:#fff8fb;border:1px solid #f1d6e1;border-radius:18px;padding:18px">
+<h2 style="margin:0 0 8px;color:#b85f88;font-size:20px">Buat Password Baru</h2>
+<p style="margin:0 0 12px">Tautan pemulihan terdeteksi. Masukkan password baru untuk akun ini.</p>
+<label for="newPassword" style="display:block;font-size:14px">Password baru</label>
+<input id="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Minimal 8 karakter" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #ddd;border-radius:10px">
+<label for="confirmPassword" style="display:block;font-size:14px">Ulangi password baru</label>
+<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Ketik ulang password" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #ddd;border-radius:10px">
+<button id="savePassword" style="width:100%;padding:13px;border:0;border-radius:12px;background:#e78eae;color:white;font-weight:700">Simpan Password Baru</button>
+<p id="resetStatus" role="status" style="margin:12px 0 0;white-space:pre-wrap"></p>
+</section>
+<small id="portalNote">Portal resmi IceCemil. Akses sesuai peran masing-masing.</small>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+  const SUPABASE_URL = "https://jalfjemcoowgsfzrxzim.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const panel = document.getElementById("resetPanel");
+  const status = document.getElementById("resetStatus");
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const query = new URLSearchParams(location.search);
+  const isRecovery = hash.get("type") === "recovery" || query.get("type") === "recovery";
+  if (!isRecovery) return;
+
+  document.querySelector("nav").hidden = true;
+  document.getElementById("portalNote").hidden = true;
+  panel.hidden = false;
+
+  document.getElementById("savePassword").addEventListener("click", async () => {
+    const password = document.getElementById("newPassword").value;
+    const confirm = document.getElementById("confirmPassword").value;
+    if (password.length < 8) {
+      status.textContent = "Password minimal 8 karakter.";
+      return;
+    }
+    if (password !== confirm) {
+      status.textContent = "Kedua password belum sama.";
+      return;
+    }
+    const button = document.getElementById("savePassword");
+    button.disabled = true;
+    status.textContent = "Menyimpan password...";
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) {
+      status.textContent = "Sesi pemulihan tidak ditemukan atau tautan sudah kedaluwarsa. Minta email pemulihan baru.";
+      button.disabled = false;
+      return;
+    }
+    const { error } = await db.auth.updateUser({ password });
+    if (error) {
+      status.textContent = "Gagal menyimpan: " + error.message;
+      button.disabled = false;
+      return;
+    }
+    await db.auth.signOut();
+    status.textContent = "Password berhasil diganti. Silakan masuk kembali melalui halaman Admin atau Kasir dengan password baru.";
+    document.getElementById("newPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+    button.hidden = true;
+    history.replaceState(null, "", location.pathname);
+  });
+})();
+</script>
 </main></body></html>
