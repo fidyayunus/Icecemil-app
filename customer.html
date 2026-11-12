@@ -91,26 +91,17 @@
     <p>Kartu Sahabat IceCemil 💗</p>
 
     <section id="login">
-      <h2>Selamat Datang!</h2>
-      <p>Masuk untuk melihat kartu loyalitasmu.</p>
-
-      <input
-        type="tel"
-        id="phone"
-        placeholder="Nomor HP"
-      >
-
-      <input
-        type="password"
-        id="pin"
-        placeholder="PIN 6 digit"
-        maxlength="6"
-        inputmode="numeric"
-      >
-
-      <button onclick="loginCustomer()">
-        Masuk
-      </button>
+      <h2>Aktivasi Kartu Sahabat 💗</h2>
+      <p>Masukkan ID dan token aktivasi yang diberikan kasir/admin, lalu buat PIN 6 digit.</p>
+      <input type="text" id="enrollCustomerId" placeholder="ID pelanggan" autocomplete="off">
+      <input type="text" id="enrollToken" placeholder="Token aktivasi" autocomplete="off">
+      <input type="password" id="newPin" placeholder="Buat PIN 6 digit" maxlength="6" inputmode="numeric" autocomplete="new-password">
+      <input type="password" id="confirmPin" placeholder="Ulangi PIN 6 digit" maxlength="6" inputmode="numeric" autocomplete="new-password">
+      <button id="enrollButton" onclick="enrollCustomer()">Aktifkan PIN</button>
+      <p class="small">Token hanya bisa dipakai sekali dan berlaku 24 jam. Jangan bagikan PIN kepada siapa pun.</p>
+      <hr style="border:0;border-top:1px solid #eee;margin:20px 0">
+      <h2>Login Pelanggan</h2>
+      <p>Login dengan nomor HP dan PIN akan tersedia setelah layanan sesi pelanggan diaktifkan.</p>
     </section>
 
     <section id="customer" hidden>
@@ -142,23 +133,54 @@
     </section>
 
     <p id="status">
-      Login pelanggan akan diaktifkan setelah konfigurasi keamanan selesai.
+      Aktivasi PIN tersedia. Login pelanggan menyusul setelah layanan sesi aman diaktifkan.
     </p>
   </div>
 
 <script>
-  function loginCustomer() {
-    const phone = document.getElementById("phone").value.trim();
-    const pin = document.getElementById("pin").value.trim();
+  const SUPABASE_URL = "https://jalfjemcoowgsfzrxzim.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    if (!phone || !pin) {
-      document.getElementById("status").textContent =
-        "Masukkan nomor HP dan PIN terlebih dahulu.";
+  async function enrollCustomer() {
+    const customer_id = document.getElementById("enrollCustomerId").value.trim();
+    const token = document.getElementById("enrollToken").value.trim();
+    const pin = document.getElementById("newPin").value;
+    const confirmation = document.getElementById("confirmPin").value;
+    const button = document.getElementById("enrollButton");
+    const status = document.getElementById("status");
+
+    if (!customer_id || !token || !pin || !confirmation) {
+      status.textContent = "Lengkapi ID pelanggan, token, dan kedua kolom PIN.";
+      return;
+    }
+    if (!/^\\d{6}$/.test(pin)) {
+      status.textContent = "PIN harus tepat 6 angka.";
+      return;
+    }
+    if (pin !== confirmation) {
+      status.textContent = "Konfirmasi PIN tidak sama.";
       return;
     }
 
-    document.getElementById("status").textContent =
-      "Login pelanggan belum diaktifkan. Silakan tunggu konfigurasi berikutnya.";
+    button.disabled = true;
+    status.textContent = "Mengaktifkan PIN dengan aman...";
+    try {
+      const { data, error } = await db.functions.invoke("customer-pin-enroll", {
+        body: { customer_id, token, pin }
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || "Aktivasi gagal. Periksa kembali data token.");
+      }
+      document.getElementById("enrollToken").value = "";
+      document.getElementById("newPin").value = "";
+      document.getElementById("confirmPin").value = "";
+      status.textContent = "PIN berhasil dibuat! Simpan PIN ini dengan aman. Login pelanggan sedang menunggu aktivasi layanan sesi.";
+    } catch (err) {
+      status.textContent = "Tidak dapat mengaktifkan PIN: " + err.message;
+    } finally {
+      button.disabled = false;
+    }
   }
 
   function logoutCustomer() {
