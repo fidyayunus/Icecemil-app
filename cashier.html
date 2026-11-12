@@ -24,7 +24,14 @@
     .panel { background:#f7fbfd; border-radius:14px; padding:14px; margin:14px 0; }
     .small { color:#776; font-size:13px; line-height:1.5; }
     #reader { width:100%; margin-top:10px; }
-    #qrOutput { display:flex; justify-content:center; margin:12px; }
+    #qrOutput, #activationQrOutput { display:flex; justify-content:center; margin:12px; }
+    @media print {
+      body { background:white; padding:0; }
+      body * { visibility:hidden; }
+      #newQrCard, #newQrCard * { visibility:visible; }
+      #newQrCard { display:block !important; position:absolute; left:0; top:0; width:100%; }
+      button { display:none !important; }
+    }
     .customer-name { font-size:18px; font-weight:bold; color:#d77f9f; }
     .stamp { font-size:17px; font-weight:bold; color:#75aeca; }
   </style>
@@ -68,9 +75,14 @@
       <input id="newCustomerPhone" type="tel" placeholder="Nomor HP pelanggan">
       <button id="addCustomerButton" onclick="addCustomer()">Tambah Pelanggan</button>
       <div id="newQrCard" class="hidden">
-        <p class="customer-name">QR pelanggan berhasil dibuat!</p>
-        <div id="qrOutput"></div>
+        <p class="customer-name">Pelanggan berhasil didaftarkan! 💗</p>
         <p id="newQrName" class="small"></p>
+        <p><strong>1. QR Aktivasi PIN</strong></p>
+        <p class="small">Minta pelanggan scan QR ini dengan kamera HP mereka, lalu buat PIN 6 digit. Link berlaku 24 jam.</p>
+        <div id="activationQrOutput" class="qr-output"></div>
+        <p><strong>2. QR Pelanggan untuk transaksi</strong></p>
+        <p class="small">Simpan QR ini agar kasir bisa scan saat pelanggan bertransaksi.</p>
+        <div id="qrOutput" class="qr-output"></div>
         <button class="blue" onclick="window.print()">Cetak QR</button>
       </div>
     </div>
@@ -286,10 +298,38 @@ async function addCustomer() {
     return;
   }
 
+  // Buat token aktivasi PIN melalui Edge Function (admin/kasir).
+  const { data: setupData, error: setupError } =
+    await db.functions.invoke("customer-pin-setup", {
+      body: { customer_id: customerId }
+    });
+
+  if (setupError || !setupData?.success || !setupData?.token) {
+    showStatus(
+      "Pelanggan sudah tersimpan, tetapi QR aktivasi gagal dibuat. " +
+      (setupData?.error || setupError?.message || "Coba buat ulang aktivasi.")
+    );
+    button.disabled = false;
+    return;
+  }
+
   document.getElementById("newCustomerName").value = "";
   document.getElementById("newCustomerPhone").value = "";
   document.getElementById("newQrCard").classList.remove("hidden");
   document.getElementById("newQrName").textContent = "Nama: " + name;
+
+  const activationUrl = new URL("customer.html", window.location.href);
+  activationUrl.searchParams.set("customer_id", customerId);
+  activationUrl.searchParams.set("token", setupData.token);
+
+  const activationBox = document.getElementById("activationQrOutput");
+  activationBox.innerHTML = "";
+  new QRCode(activationBox, {
+    text: activationUrl.toString(),
+    width: 200,
+    height: 200,
+    correctLevel: QRCode.CorrectLevel.H
+  });
 
   const qrBox = document.getElementById("qrOutput");
   qrBox.innerHTML = "";
@@ -300,7 +340,7 @@ async function addCustomer() {
     correctLevel: QRCode.CorrectLevel.H
   });
 
-  showStatus("Pelanggan berhasil ditambahkan! 💗");
+  showStatus("Pelanggan berhasil didaftarkan dan QR aktivasi siap discan! 💗");
   button.disabled = false;
 }
 
