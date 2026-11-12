@@ -233,7 +233,19 @@ async function renewCustomerActivation() {
     });
 
     if (error || !data?.success || !data?.token) {
-      throw new Error(data?.error || error?.message || "Token aktivasi baru gagal dibuat.");
+      let detail = data?.error || "";
+      if (!detail && error?.context && typeof error.context.clone === "function") {
+        try {
+          const raw = await error.context.clone().text();
+          try {
+            const parsed = JSON.parse(raw);
+            detail = parsed.error || parsed.message || raw;
+          } catch (_) {
+            detail = raw;
+          }
+        } catch (_) {}
+      }
+      throw new Error(detail || error?.message || "Token aktivasi baru gagal dibuat.");
     }
 
     document.getElementById("newQrCard").classList.remove("hidden");
