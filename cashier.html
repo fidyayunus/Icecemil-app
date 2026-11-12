@@ -66,6 +66,7 @@
       <p id="selectedCustomerPhone" class="small"></p>
       <p class="stamp" id="selectedCustomerStamp"></p>
       <p id="rewardNotice" class="small"></p>
+      <button class="blue" id="renewActivationButton" onclick="renewCustomerActivation()">Buat Ulang QR Aktivasi PIN</button>
       <button class="soft" onclick="clearSelectedCustomer()">Ganti Pelanggan</button>
     </div>
 
@@ -213,6 +214,60 @@ function selectCustomer(customer) {
   document.getElementById("selectedCustomerName").textContent = customer.name;
   document.getElementById("selectedCustomerPhone").textContent = customer.phone || "";
   updateCustomerStamp(customer.stamp_count, customer.reward_available);
+}
+
+async function renewCustomerActivation() {
+  if (!selectedCustomer) return showStatus("Pilih pelanggan terlebih dahulu.");
+
+  const button = document.getElementById("renewActivationButton");
+  button.disabled = true;
+  showStatus("Membuat QR aktivasi baru untuk " + selectedCustomer.name + "...");
+
+  try {
+    if (!(await checkCashier())) {
+      throw new Error("Sesi kasir tidak valid. Silakan login kembali.");
+    }
+
+    const { data, error } = await db.functions.invoke("customer-pin-setup", {
+      body: { customer_id: selectedCustomer.id }
+    });
+
+    if (error || !data?.success || !data?.token) {
+      throw new Error(data?.error || error?.message || "Token aktivasi baru gagal dibuat.");
+    }
+
+    document.getElementById("newQrCard").classList.remove("hidden");
+    document.getElementById("newQrName").textContent = "QR baru untuk pelanggan: " + selectedCustomer.name;
+
+    const activationUrl = new URL("customer.html", window.location.href);
+    activationUrl.searchParams.set("customer_id", selectedCustomer.id);
+    activationUrl.searchParams.set("token", data.token);
+
+    const activationBox = document.getElementById("activationQrOutput");
+    activationBox.innerHTML = "";
+    new QRCode(activationBox, {
+      text: activationUrl.toString(),
+      width: 200,
+      height: 200,
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    const qrBox = document.getElementById("qrOutput");
+    qrBox.innerHTML = "";
+    new QRCode(qrBox, {
+      text: selectedCustomer.qr_token,
+      width: 200,
+      height: 200,
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    showStatus("QR aktivasi baru berhasil dibuat untuk pelanggan yang sama. QR lama tidak berlaku lagi.");
+    document.getElementById("newQrCard").scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (err) {
+    showStatus("Gagal membuat QR aktivasi baru: " + err.message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function updateCustomerStamp(stampCount, rewardAvailable) {
