@@ -102,13 +102,17 @@
       <p class="small">QR hanya bisa dipakai sekali dan berlaku 24 jam. Jangan bagikan PIN kepada siapa pun.</p>
       <hr style="border:0;border-top:1px solid #eee;margin:20px 0">
       <h2>Login Pelanggan</h2>
-      <p>Login dengan nomor HP dan PIN akan tersedia setelah layanan sesi pelanggan diaktifkan.</p>
+      <p>Masuk menggunakan nomor HP dan PIN 6 digit.</p>
+      <input type="tel" id="loginPhone" placeholder="Nomor HP terdaftar" autocomplete="tel">
+      <input type="password" id="loginPin" placeholder="PIN 6 digit" maxlength="6" inputmode="numeric" autocomplete="current-password">
+      <button id="loginButton" onclick="loginCustomer()">Masuk</button>
     </section>
 
     <section id="customer" hidden>
       <h2>Halo, Sahabat IceCemil! 🍓</h2>
 
       <p id="customerName">Nama pelanggan</p>
+      <p id="customerPhone"></p>
 
       <h3 style="text-align:center">
         Stamp Kamu
@@ -124,18 +128,14 @@
       </div>
 
       <h3>Riwayat Pembelian</h3>
-      <div id="history">
-        Riwayat akan tampil setelah akun terhubung.
-      </div>
+      <div id="history">Belum ada riwayat pembelian.</div>
 
       <button onclick="logoutCustomer()">
         Keluar
       </button>
     </section>
 
-    <p id="status">
-      Aktivasi PIN tersedia. Login pelanggan menyusul setelah layanan sesi aman diaktifkan.
-    </p>
+    <p id="status">Masukkan nomor HP dan PIN untuk melihat kartu Sahabat IceCemil.</p>
   </div>
 
 <script>
@@ -207,9 +207,86 @@
     }
   }
 
+  async function loginCustomer() {
+    const phone = document.getElementById("loginPhone").value.trim();
+    const pin = document.getElementById("loginPin").value;
+    const button = document.getElementById("loginButton");
+    const status = document.getElementById("status");
+
+    if (!phone || !/^\\d{6}$/.test(pin)) {
+      status.textContent = "Masukkan nomor HP dan PIN tepat 6 angka.";
+      return;
+    }
+
+    button.disabled = true;
+    status.textContent = "Memeriksa PIN...";
+    try {
+      const { data, error } = await db.functions.invoke("customer-pin-login", {
+        body: { phone, pin }
+      });
+      if (error || !data?.success || !data?.customer) {
+        let detail = data?.error || "";
+        if (!detail && error?.context && typeof error.context.clone === "function") {
+          try {
+            const raw = await error.context.clone().text();
+            try {
+              const parsed = JSON.parse(raw);
+              detail = parsed.error || parsed.message || raw;
+            } catch (_) { detail = raw; }
+          } catch (_) {}
+        }
+        throw new Error(detail || error?.message || "Login gagal. Periksa nomor HP dan PIN.");
+      }
+
+      const customer = data.customer;
+      document.getElementById("customerName").textContent = customer.name || "Sahabat IceCemil";
+      document.getElementById("customerPhone").textContent = customer.phone || "";
+      document.getElementById("rewardStatus").textContent =
+        customer.reward_available || customer.stamp_count >= 5
+          ? "Hadiah gratis kamu sudah tersedia! 🎉"
+          : "Hadiah belum tersedia";
+
+      const stampBox = document.getElementById("stamps");
+      stampBox.innerHTML = "";
+      const count = Math.max(0, Math.min(5, Number(customer.stamp_count) || 0));
+      for (let i = 0; i < 5; i++) {
+        const stamp = document.createElement("div");
+        stamp.className = "stamp";
+        stamp.textContent = i < count ? "🍦" : "♡";
+        stampBox.appendChild(stamp);
+      }
+
+      const historyBox = document.getElementById("history");
+      historyBox.innerHTML = "";
+      const history = Array.isArray(data.history) ? data.history : [];
+      if (!history.length) {
+        historyBox.textContent = "Belum ada riwayat pembelian.";
+      } else {
+        history.forEach((item) => {
+          const row = document.createElement("p");
+          const date = item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "";
+          row.textContent = date + " • " + (item.menu_name || "Menu IceCemil") +
+            " • Qty " + item.quantity + " • Rp" + Number(item.total || 0).toLocaleString("id-ID");
+          historyBox.appendChild(row);
+        });
+      }
+
+      document.getElementById("login").hidden = true;
+      document.getElementById("customer").hidden = false;
+      document.getElementById("loginPin").value = "";
+      status.textContent = "Login berhasil. Selamat menikmati kartu Sahabat IceCemil! 💗";
+    } catch (err) {
+      status.textContent = "Tidak dapat login: " + err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   function logoutCustomer() {
     document.getElementById("customer").hidden = true;
     document.getElementById("login").hidden = false;
+    document.getElementById("loginPin").value = "";
+    document.getElementById("status").textContent = "Kamu sudah keluar dari kartu pelanggan.";
   }
 
   const stamps = document.getElementById("stamps");
