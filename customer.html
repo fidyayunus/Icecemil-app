@@ -213,7 +213,7 @@
     const button = document.getElementById("loginButton");
     const status = document.getElementById("status");
 
-    if (!phone || !/^\\d{6}$/.test(pin)) {
+    if (!phone || !/^\d{6}$/.test(pin)) {
       status.textContent = "Masukkan nomor HP dan PIN tepat 6 angka.";
       return;
     }
