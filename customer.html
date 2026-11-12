@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>IceCemil - Kartu Pelanggan</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -92,13 +93,13 @@
 
     <section id="login">
       <h2>Aktivasi Kartu Sahabat 💗</h2>
-      <p>Masukkan ID dan token aktivasi yang diberikan kasir/admin, lalu buat PIN 6 digit.</p>
-      <input type="text" id="enrollCustomerId" placeholder="ID pelanggan" autocomplete="off">
-      <input type="text" id="enrollToken" placeholder="Token aktivasi" autocomplete="off">
+      <p id="activationIntro">Scan QR aktivasi dari admin, lalu buat PIN 6 digit.</p>
+      <input type="text" id="enrollCustomerId" placeholder="ID pelanggan" autocomplete="off" hidden>
+      <input type="text" id="enrollToken" placeholder="Token aktivasi" autocomplete="off" hidden>
       <input type="password" id="newPin" placeholder="Buat PIN 6 digit" maxlength="6" inputmode="numeric" autocomplete="new-password">
       <input type="password" id="confirmPin" placeholder="Ulangi PIN 6 digit" maxlength="6" inputmode="numeric" autocomplete="new-password">
       <button id="enrollButton" onclick="enrollCustomer()">Aktifkan PIN</button>
-      <p class="small">Token hanya bisa dipakai sekali dan berlaku 24 jam. Jangan bagikan PIN kepada siapa pun.</p>
+      <p class="small">QR hanya bisa dipakai sekali dan berlaku 24 jam. Jangan bagikan PIN kepada siapa pun.</p>
       <hr style="border:0;border-top:1px solid #eee;margin:20px 0">
       <h2>Login Pelanggan</h2>
       <p>Login dengan nomor HP dan PIN akan tersedia setelah layanan sesi pelanggan diaktifkan.</p>
@@ -141,6 +142,13 @@
   const SUPABASE_URL = "https://jalfjemcoowgsfzrxzim.supabase.co";
   const SUPABASE_KEY = "sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const params = new URLSearchParams(window.location.search);
+  const cid = params.get("customer_id"), tok = params.get("token");
+  if (cid && tok) {
+    document.getElementById("enrollCustomerId").value = cid;
+    document.getElementById("enrollToken").value = tok;
+    document.getElementById("activationIntro").textContent = "QR berhasil dibaca! Sekarang buat PIN 6 digit.";
+  }
 
   async function enrollCustomer() {
     const customer_id = document.getElementById("enrollCustomerId").value.trim();
