@@ -98,19 +98,16 @@ th{background:#f7dce7}
 </table>
 </div>
 
-<div id="pinTokenBox" class="panel hidden">
-  <h3>🔐 Token Pendaftaran PIN</h3>
-  <p id="pinTokenCustomer"></p>
-
-  <label class="small">ID Pelanggan</label>
-  <input id="pinCustomerId" readonly>
-
-  <label class="small">Token pendaftaran</label>
-  <input id="pinTokenValue" readonly>
-
-  <p class="small">Token berlaku selama 24 jam dan hanya dapat digunakan sekali. Rahasiakan token ini.</p>
-
-  <button class="blue" onclick="copyPinToken()">Salin Token</button>
+<div id="pinTokenBox" class="panel hidden" style="text-align:center">
+  <h3>🍦 QR Aktivasi Kartu Sahabat</h3><p id="pinTokenCustomer"></p>
+  <div id="pinEnrollQr" style="display:flex;justify-content:center;background:white;padding:14px;border-radius:12px"></div>
+  <p><b>Minta pelanggan scan QR ini dengan kamera HP.</b></p>
+  <p class="small">QR berlaku 24 jam dan hanya bisa digunakan sekali. Jangan bagikan QR kepada orang lain.</p>
+  <button class="blue" onclick="copyPinLink()">Salin Link Aktivasi</button>
+  <button class="soft" onclick="window.print()">Cetak QR Aktivasi</button>
+  <details style="text-align:left;margin-top:10px"><summary class="small">Lihat kode manual (opsional)</summary>
+  <label class="small">ID Pelanggan</label><input id="pinCustomerId" readonly>
+  <label class="small">Token aktivasi</label><input id="pinTokenValue" readonly></details>
 </div>
 
 </div>
@@ -312,26 +309,22 @@ async function createPinToken(customerId) {
 
   document.getElementById("pinCustomerId").value = customerId;
   document.getElementById("pinTokenValue").value = data.token;
-
-  showStatus("Token berhasil dibuat. Berlaku selama 24 jam.");
+  const link = new URL("customer.html", window.location.href);
+  link.searchParams.set("customer_id", customerId);
+  link.searchParams.set("token", data.token);
+  const qr = document.getElementById("pinEnrollQr");
+  qr.innerHTML = "";
+  new QRCode(qr, {text:link.toString(), width:220, height:220, correctLevel:QRCode.CorrectLevel.H});
+  document.getElementById("pinTokenBox").scrollIntoView({behavior:"smooth",block:"center"});
+  showStatus("QR aktivasi siap. Minta pelanggan scan dengan kamera HP.");
 }
 
-async function copyPinToken() {
-  const customerId = document.getElementById("pinCustomerId").value;
-  const token = document.getElementById("pinTokenValue").value;
-
-  const textToCopy =
-    "ID Pelanggan: " + customerId +
-    "\nToken Pendaftaran: " + token;
-
-  try {
-    await navigator.clipboard.writeText(textToCopy);
-    showStatus("Data pendaftaran berhasil disalin!");
-  } catch {
-    const input = document.getElementById("pinTokenValue");
-    input.select();
-    showStatus("Salin token secara manual. ID pelanggan juga diperlukan.");
-  }
+async function copyPinLink() {
+  const link = new URL("customer.html", window.location.href);
+  link.searchParams.set("customer_id", document.getElementById("pinCustomerId").value);
+  link.searchParams.set("token", document.getElementById("pinTokenValue").value);
+  try { await navigator.clipboard.writeText(link.toString()); showStatus("Link aktivasi berhasil disalin!"); }
+  catch { showStatus("Tidak bisa menyalin link. Silakan scan QR di atas."); }
 }
 
 function menuName(id){
