@@ -178,7 +178,23 @@
         body: { customer_id, token, pin }
       });
       if (error || !data?.success) {
-        throw new Error(data?.error || error?.message || "Aktivasi gagal. Periksa kembali data token.");
+        let detail = data?.error || "";
+        // Supabase menyimpan body respons non-2xx di error.context.
+        if (!detail && error?.context) {
+          try {
+            const response = error.context;
+            if (typeof response.clone === "function") {
+              const raw = await response.clone().text();
+              try {
+                const parsed = JSON.parse(raw);
+                detail = parsed.error || parsed.message || raw;
+              } catch {
+                detail = raw;
+              }
+            }
+          } catch (_) {}
+        }
+        throw new Error(detail || error?.message || "Aktivasi gagal. Periksa token dan konfigurasi fungsi.");
       }
       document.getElementById("enrollToken").value = "";
       document.getElementById("newPin").value = "";
