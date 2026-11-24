@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7b6cf"><title>Ice Cemil • Penjualan</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--pink:#f7b6cf;--pink2:#ffe7f0;--blue:#bce8f5;--blue2:#e8f8fc;--cream:#fffaf3;--brown:#704b3b;--muted:#947e79;--line:#f0dce3}
+*{box-sizing:border-box}body{margin:0;padding:18px;font-family:system-ui,-apple-system,Arial,sans-serif;background:linear-gradient(145deg,#fff5f8,#eefaff);color:var(--brown)}
+.wrap{max-width:1050px;margin:auto}.top{text-align:center;padding:18px 8px 12px}.logo{font-size:44px}h1{margin:2px 0;color:#bb668c;font-size:30px}h2{color:#78aebe;margin:0 0 14px}p{color:var(--muted)}.sub{margin:4px 0 0}
+.card{background:#ffffffed;border:1px solid var(--line);border-radius:22px;padding:20px;margin:14px 0;box-shadow:0 12px 35px #80546b10}
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.choice{border:1px solid var(--line);border-radius:18px;padding:24px 14px;text-align:center;cursor:pointer;background:var(--pink2);font-weight:800;color:var(--brown);font-size:18px}.choice:nth-child(2){background:var(--blue2)}.choice span{display:block;font-size:34px;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field label{display:block;font-size:13px;font-weight:700;margin:0 0 5px;color:#806c68}
+input,select,button{font:inherit;width:100%;padding:12px;border-radius:12px;border:1px solid #eadce1;background:white;color:var(--brown)}button{border:0;background:#e99bb9;color:white;font-weight:800;cursor:pointer}button.blue{background:#83c2d5}button.soft{background:var(--blue2);color:#5b8290;border:1px solid #d8edf3}button:disabled{opacity:.55;cursor:wait}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.actions button{flex:1;min-width:130px}.back{width:auto;background:transparent;color:#9c6d81;padding:7px 0;margin:0 0 12px}
+.statgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat{background:var(--pink2);padding:14px;border-radius:15px}.stat:nth-child(2){background:var(--blue2)}.stat:nth-child(3){background:#fff2df}.stat small{color:var(--muted)}.stat strong{display:block;font-size:20px;margin-top:5px}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}th,td{text-align:left;padding:10px;border-bottom:1px solid #f0e6e9}th{color:#9a6880;background:#fff7fa}
+.notice{font-size:13px;line-height:1.5;padding:11px 13px;border-radius:12px;background:#fff8e9;color:#806c52}.status{font-size:14px;min-height:22px;margin:10px 0;color:#9b6680}.hidden{display:none!important}.sectionhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.sectionhead h2{margin:0}
+@media(max-width:600px){body{padding:10px}.card{padding:15px}.grid{grid-template-columns:1fr}.statgrid{grid-template-columns:1fr}.stat strong{font-size:18px}.choices{gap:9px}.choice{padding:18px 8px;font-size:16px}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><div class="logo">🍦💗🩵</div><h1>Ice Cemil</h1><p class="sub">Catatan Penjualan • Manisnya Bikin Happy!</p></header>
+<section id="home" class="card"><h2 style="text-align:center">Pilih Menu</h2><div class="choices">
+<button class="choice" onclick="openPage('cashier')"><span>🧾</span>Kasir</button>
+<button class="choice" onclick="openPage('admin')"><span>📊</span>Admin / Owner</button>
+</div><p class="sub" style="text-align:center;font-size:13px;margin-top:16px">Pilih sesuai kebutuhan kamu hari ini ✨</p></section>
+<section id="cashier" class="hidden">
+<button class="back" onclick="goHome()">← Kembali ke menu utama</button>
+<div class="card"><h2>🧾 Catat Penjualan</h2>
+<div class="grid">
+<div class="field"><label for="saleDate">Tanggal penjualan</label><input id="saleDate" type="date"></div>
+<div class="field"><label for="menu">Pilihan menu</label><select id="menu"><option value="">Pilih menu</option><option value="Ice Cemil Full Toping|10000">Ice Cemil Full Toping — Rp10.000</option><option value="Oreo Crunch Cup|10000">Oreo Crunch Cup — Rp10.000</option><option value="Mini Ice Choco Crunch|5000">Mini Ice Choco Crunch — Rp5.000</option><option value="Cone|5000">Cone — Rp5.000</option></select></div>
+<div class="field"><label for="qty">Qty / jumlah dibeli</label><input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
+<div class="field"><label for="payment">Metode pembayaran</label><select id="payment"><option value="">Pilih pembayaran</option><option value="Tunai">Tunai</option><option value="QRIS">QRIS</option></select></div>
+<div class="field"><label for="buyer">Kriteria pembeli</label><select id="buyer"><option value="">Pilih kriteria pembeli</option><option value="Anak-anak">Anak-anak</option><option value="Remaja">Remaja</option><option value="Dewasa">Dewasa</option></select></div>
+<div class="field"><label>Harga satuan</label><input id="unitPrice" readonly placeholder="Otomatis dari menu"></div>
+</div>
+<div class="stat" style="margin-top:12px"><small>Total penjualan</small><strong id="totalPreview">Rp0</strong></div>
+<div class="actions"><button id="saveBtn" onclick="saveSale()">Simpan Penjualan</button><button class="soft" onclick="resetForm()">Kosongkan Form</button></div>
+<p id="cashierStatus" class="status" role="status"></p>
+</div>
+<div class="card"><div class="sectionhead"><h2>Penjualan Terbaru</h2><button class="soft" style="width:auto" onclick="loadRecent()">↻ Perbarui</button></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Menu</th><th>Qty</th><th>Pembayaran</th><th>Total</th></tr></thead><tbody id="recentBody"><tr><td colspan="5">Memuat data...</td></tr></tbody></table></div></div>
+</section>
+<section id="admin" class="hidden">
+<button class="back" onclick="goHome()">← Kembali ke menu utama</button>
+<div class="card"><div class="sectionhead"><h2>📊 Laporan Penjualan</h2><button class="soft" style="width:auto" onclick="loadReport()">↻ Perbarui data</button></div>
+<div class="grid" style="margin:14px 0">
+<div class="field"><label for="period">Jenis laporan</label><select id="period" onchange="setPeriod()"><option value="daily">Harian</option><option value="monthly">Bulanan</option><option value="yearly">Tahunan</option><option value="custom">Rentang tanggal</option></select></div>
+<div class="field"><label for="reportDate">Pilih tanggal / bulan / tahun</label><input id="reportDate" type="date" onchange="loadReport()"></div>
+<div class="field custom hidden"><label for="fromDate">Dari tanggal</label><input id="fromDate" type="date" onchange="loadReport()"></div>
+<div class="field custom hidden"><label for="toDate">Sampai tanggal</label><input id="toDate" type="date" onchange="loadReport()"></div>
+</div>
+<div class="statgrid"><div class="stat"><small>Total omzet</small><strong id="revenue">Rp0</strong></div><div class="stat"><small>Jumlah transaksi</small><strong id="transactions">0</strong></div><div class="stat"><small>Total produk terjual</small><strong id="items">0</strong></div></div>
+<div class="actions"><button onclick="exportExcel()">⬇ Export Excel (.xlsx)</button></div>
+<p id="adminStatus" class="status" role="status"></p>
+</div>
+<div class="card"><h2>Ringkasan Menu</h2><div class="tablewrap"><table><thead><tr><th>Menu</th><th>Qty terjual</th><th>Omzet</th></tr></thead><tbody id="menuSummary"></tbody></table></div></div>
+<div class="card"><h2>Metode Pembayaran</h2><div class="tablewrap"><table><thead><tr><th>Metode</th><th>Transaksi</th><th>Omzet</th></tr></thead><tbody id="paymentSummary"></tbody></table></div></div>
+<div class="card"><h2>Kriteria Pembeli</h2><div class="tablewrap"><table><thead><tr><th>Pembeli</th><th>Qty produk</th><th>Transaksi</th></tr></thead><tbody id="buyerSummary"></tbody></table></div></div>
+<div class="card"><h2>Detail Transaksi</h2><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Menu</th><th>Qty</th><th>Harga satuan</th><th>Total</th><th>Pembayaran</th><th>Pembeli</th></tr></thead><tbody id="detailBody"></tbody></table></div></div>
+</section>
+<p style="text-align:center;font-size:12px;padding:4px">Ice Cemil • Pink pastel & biru pastel 🍨</p>
+</div>
+<script>
+const SUPABASE_URL="https://jalfjemcoowgsfzrxzim.supabase.co";
+const SUPABASE_KEY="sb_publishable_ZuTXids4UK11IC3gONDcqg_f8aMtEYx";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+let reportRows=[];
+const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)};
+const money=n=>"Rp"+Number(n||0).toLocaleString("id-ID");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function openPage(which){$("home").classList.add("hidden");$("cashier").classList.toggle("hidden",which!=="cashier");$("admin").classList.toggle("hidden",which!=="admin");if(which==="cashier"){resetForm();loadRecent()}else{loadReport()}}
+function goHome(){["cashier","admin"].forEach(x=>$(x).classList.add("hidden"));$("home").classList.remove("hidden")}
+function updateTotal(){const p=Number(($("menu").value.split("|")[1])||0);$("unitPrice").value=p?money(p):"";$("totalPreview").textContent=money(p*(Number($("qty").value)||0))}
+$("menu").addEventListener("change",updateTotal);$("qty").addEventListener("input",updateTotal);
+function resetForm(){$("saleDate").value=today();$("menu").value="";$("qty").value=1;$("payment").value="";$("buyer").value="";updateTotal();$("cashierStatus").textContent=""}
+async function saveSale(){
+ const date=$("saleDate").value,parts=$("menu").value.split("|"),qty=Number($("qty").value),payment=$("payment").value,buyer=$("buyer").value;
+ if(!date||!parts[0]||!Number.isInteger(qty)||qty<1||!payment||!buyer){$("cashierStatus").textContent="Lengkapi tanggal, menu, qty, pembayaran, dan kriteria pembeli terlebih dahulu.";return}
+ const price=Number(parts[1]),btn=$("saveBtn");btn.disabled=true;$("cashierStatus").textContent="Menyimpan penjualan...";
+ const {error}=await db.from("sales_records").insert({sale_date:date,menu_name:parts[0],unit_price:price,qty,payment_method:payment,buyer_type:buyer,total:price*qty});
+ btn.disabled=false;
+ if(error){$("cashierStatus").textContent="Gagal menyimpan: "+error.message+". Pastikan SQL setup sudah dijalankan di Supabase.";return}
+ $("cashierStatus").textContent="Penjualan berhasil disimpan! 💗";$("menu").value="";$("qty").value=1;$("payment").value="";$("buyer").value="";updateTotal();await loadRecent()
+}
+async function loadRecent(){
+ const {data,error}=await db.from("sales_records").select("*").order("created_at",{ascending:false}).limit(12);
+ if(error){$("recentBody").innerHTML='<tr><td colspan="5">Gagal memuat. Jalankan SQL setup terlebih dahulu.</td></tr>';return}
+ $("recentBody").innerHTML=(data||[]).map(r=>'<tr><td>'+esc(r.sale_date)+'</td><td>'+esc(r.menu_name)+'</td><td>'+r.qty+'</td><td>'+esc(r.payment_method)+'</td><td>'+money(r.total)+'</td></tr>').join("")||'<tr><td colspan="5">Belum ada penjualan.</td></tr>'
+}
+function setPeriod(){const custom=$("period").value==="custom";document.querySelectorAll(".custom").forEach(e=>e.classList.toggle("hidden",!custom));$("reportDate").parentElement.classList.toggle("hidden",custom);loadReport()}
+function getBounds(){
+ const p=$("period").value,v=$("reportDate").value||today();
+ if(p==="daily")return [v,v];
+ if(p==="monthly"){const m=v.slice(0,7);return [m+"-01",m+"-31"]}
+ if(p==="yearly"){const y=v.slice(0,4);return [y+"-01-01",y+"-12-31"]}
+ return [$("fromDate").value||"0001-01-01",$("toDate").value||"9999-12-31"]
+}
+async function loadReport(){
+ const [from,to]=getBounds();$("adminStatus").textContent="Mengambil data laporan...";
+ const {data,error}=await db.from("sales_records").select("*").gte("sale_date",from).lte("sale_date",to).order("sale_date",{ascending:false}).order("created_at",{ascending:false});
+ if(error){$("adminStatus").textContent="Gagal mengambil laporan: "+error.message+". Pastikan SQL setup sudah dijalankan.";return}
+ reportRows=data||[];renderReport();$("adminStatus").textContent="Laporan berhasil diperbarui."
+}
+function fillRows(id,rows,cols){$(id).innerHTML=rows.length?rows.map(row=>"<tr>"+row.map((v,i)=>"<td>"+(i===cols-1?v:esc(v))+"</td>").join("")+"</tr>").join(""):'<tr><td colspan="'+cols+'">Belum ada data.</td></tr>'}
+function renderReport(){
+ const rows=reportRows,rev=rows.reduce((s,r)=>s+Number(r.total||0),0),qty=rows.reduce((s,r)=>s+Number(r.qty||0),0);
+ $("revenue").textContent=money(rev);$("transactions").textContent=rows.length;$("items").textContent=qty;
+ const menus={};rows.forEach(r=>{const x=menus[r.menu_name]||(menus[r.menu_name]={qty:0,total:0});x.qty+=Number(r.qty);x.total+=Number(r.total)});
+ fillRows("menuSummary",Object.entries(menus).map(([n,x])=>[n,x.qty,money(x.total)]),3);
+ const pay={};rows.forEach(r=>{const x=pay[r.payment_method]||(pay[r.payment_method]={count:0,total:0});x.count++;x.total+=Number(r.total)});
+ fillRows("paymentSummary",Object.entries(pay).map(([n,x])=>[n,x.count,money(x.total)]),3);
+ const buyers={};rows.forEach(r=>{const x=buyers[r.buyer_type]||(buyers[r.buyer_type]={qty:0,count:0});x.qty+=Number(r.qty);x.count++});
+ fillRows("buyerSummary",Object.entries(buyers).map(([n,x])=>[n,x.qty,x.count]),3);
+ fillRows("detailBody",rows.map(r=>[r.sale_date,r.menu_name,r.qty,money(r.unit_price),money(r.total),r.payment_method,r.buyer_type]),7)
+}
+function exportExcel(){
+ if(!reportRows.length){$("adminStatus").textContent="Tidak ada data untuk diekspor pada periode ini.";return}
+ if(!window.XLSX){$("adminStatus").textContent="Fitur Excel belum termuat. Periksa koneksi internet.";return}
+ const data=reportRows.map(r=>({"Tanggal":r.sale_date,"Menu":r.menu_name,"Qty":r.qty,"Harga Satuan":r.unit_price,"Total":r.total,"Metode Pembayaran":r.payment_method,"Kriteria Pembeli":r.buyer_type,"Waktu Dicatat":r.created_at}));
+ const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Penjualan");
+ const [from,to]=getBounds();XLSX.writeFile(wb,"Laporan-Ice-Cemil-"+from+"-sd-"+to+".xlsx")
+}
+$("saleDate").value=today();$("reportDate").value=today();$("fromDate").value=today();$("toDate").value=today();updateTotal();
+</script>
+</body></html>
