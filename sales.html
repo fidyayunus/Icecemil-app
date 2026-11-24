@@ -95,7 +95,7 @@ function setPeriod(){const custom=$("period").value==="custom";document.querySel
 function getBounds(){
  const p=$("period").value,v=$("reportDate").value||today();
  if(p==="daily")return [v,v];
- if(p==="monthly"){const m=v.slice(0,7);return [m+"-01",m+"-31"]}
+ if(p==="monthly"){const d=new Date(Number(v.slice(0,4)),Number(v.slice(5,7)),0);const last=String(d.getDate()).padStart(2,"0");return [v.slice(0,7)+"-01",v.slice(0,7)+"-"+last]}
  if(p==="yearly"){const y=v.slice(0,4);return [y+"-01-01",y+"-12-31"]}
  return [$("fromDate").value||"0001-01-01",$("toDate").value||"9999-12-31"]
 }
